@@ -12,9 +12,9 @@ jobs:
     
     - name: Build APK in Docker
       run: |
-        docker run --rm -v ${{ github.workspace }}:/app -w /app \
-        chhina/buildozer:latest \
-        sh -c "buildozer android debug || (cat .buildozer/logs/* && exit 1)"
+        docker run --rm -v ${{ github.workspace }}:/home/user/hostcwd \
+        kivy/buildozer:latest \
+        buildozer android debug
         
     - name: Upload APK
       uses: actions/upload-artifact@v4
@@ -22,3 +22,10 @@ jobs:
       with:
         name: birkarta-docker-apk
         path: bin/*.apk
+        
+    - name: Upload logs if failed
+      uses: actions/upload-artifact@v4
+      if: failure()
+      with:
+        name: buildozer-logs
+        path: .buildozer/logs/
