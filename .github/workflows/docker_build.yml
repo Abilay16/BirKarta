@@ -1,0 +1,24 @@
+name: Build APK with Docker
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Build APK in Docker
+      run: |
+        docker run --rm -v ${{ github.workspace }}:/app -w /app \
+        chhina/buildozer:latest \
+        sh -c "buildozer android debug || (cat .buildozer/logs/* && exit 1)"
+        
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: birkarta-docker-apk
+        path: bin/*.apk
