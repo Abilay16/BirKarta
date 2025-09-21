@@ -1,5 +1,4 @@
-# main.py
-import json  # ВАЖНО! Этого не было в твоем коде
+import json
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
@@ -10,7 +9,6 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.widget import Widget
 from kivy.graphics import Color, RoundedRectangle
 from kivy.uix.behaviors import ButtonBehavior
-from kivy.clock import Clock
 
 # Android NFC импорты
 from kivy.utils import platform
@@ -22,47 +20,9 @@ if platform == 'android':
 # Настройка окна
 Window.clearcolor = (1, 1, 1, 1)
 
-# Демо данные (для тестирования без NFC)
-DEMO_DATA = {
-    "fio": "АРМАН АХМЕТОВ",
-    "certs": [
-        {
-            "name": "Удостоверение по проверке знаний, правил, норм и инструкций по безопасности и охране труда",
-            "date": "24.02.2025",
-            "details": {
-                "Выдано": "24.02.2025",
-                "Должность": "Оператор",
-                "Место работы": "ТОО Болашак-Узень",
-                "Комментарий": "В том что сдал экзамены на знание Безопасность и охрана труда",
-                "Основание": "Приказ №8 от 24.02.2025",
-                "Номер протокола": "82",
-                "Председатель": "Аяпбергенов А.А.",
-                "Члены комиссии": "Джайгулова Ұ., Каржаубаев А."
-            }
-        },
-        {
-            "name": "ОРТ ҚАУІПСІЗІГІ",
-            "date": "28.02.2025",
-            "details": {
-                "Выдано": "28.02.2025",
-                "Должность": "Оператор",
-                "Место работы": "ТОО Болашак-Узень",
-                "Комментарий": "В том что сдал экзамены на знание Безопасность и охрана труда",
-                "Основание": "Приказ №7 от 20.02.2025",
-                "Номер протокола": "81",
-                "Председатель": "Кенжебаев Д.Д.",
-                "Члены комиссии": "Салимов К., Абдуллин Е."
-            }
-        }
-    ]
-}
-
 class CardButton(ButtonBehavior, BoxLayout):
     """
     Кнопка-карточка для отображения сертификата
-    Объяснение для новичка:
-    - ButtonBehavior делает виджет кликабельным
-    - BoxLayout позволяет размещать элементы вертикально
     """
     def __init__(self, cert, idx, open_callback, **kwargs):
         super().__init__(
@@ -73,12 +33,12 @@ class CardButton(ButtonBehavior, BoxLayout):
             **kwargs
         )
         
-        # Рисуем фон карточки (округлый прямоугольник)
+        # Рисуем фон карточки
         with self.canvas.before:
-            Color(0.96, 0.98, 1, 1)  # Светло-голубой цвет
+            Color(0.96, 0.98, 1, 1)  # Светло-голубой
             self.bg = RoundedRectangle(radius=[22], pos=self.pos, size=self.size)
         
-        # Привязываем обновление фона к изменению позиции/размера
+        # Привязываем обновление фона
         self.bind(pos=self._update_bg, size=self._update_bg)
 
         # Заголовок сертификата
@@ -91,9 +51,8 @@ class CardButton(ButtonBehavior, BoxLayout):
             halign='left',
             valign='top',
             size_hint_y=None,
-            text_size=(Window.width - 110, None)  # Ограничиваем ширину для переноса строк
+            text_size=(Window.width - 110, None)
         )
-        # Автоматически подгоняем высоту под текст
         title.bind(texture_size=lambda inst, val: setattr(title, 'height', val[1]))
         self.add_widget(title)
 
@@ -109,45 +68,92 @@ class CardButton(ButtonBehavior, BoxLayout):
             height=22
         ))
         
-        # Дата окончания
+        # Дата окончания с проверкой срока
         valid_until = cert.get('date', 'Не указано')
+        date_color = self._get_date_color(valid_until)
         self.add_widget(Label(
             text=f"Действует до: {valid_until}",
             font_size=14,
-            color=[0.2, 0.2, 0.2, 1],
+            color=date_color,
             halign='left',
             valign='middle',
             size_hint_y=None,
             height=22
         ))
         
-        # Автоматически подгоняем высоту карточки под содержимое
         self.bind(minimum_height=self.setter('height'))
-        
-        # Сохраняем callback и индекс для обработки нажатия
         self._open_callback = open_callback
         self._cert_index = idx
 
+    def _get_date_color(self, date_str):
+        """Определяет цвет даты в зависимости от срока действия"""
+        try:
+            from datetime import datetime
+            # Пробуем распарсить дату в формате дд.мм.гггг
+            cert_date = datetime.strptime(date_str, "%d.%m.%Y")
+            today = datetime.now()
+            days_left = (cert_date - today).days
+            
+            if days_left < 0:
+                return [1, 0, 0, 1]  # Красный - просрочен
+            elif days_left < 30:
+                return [1, 0.5, 0, 1]  # Оранжевый - скоро истекает
+            else:
+                return [0.2, 0.2, 0.2, 1]  # Серый - все ок
+        except:
+            return [0.2, 0.2, 0.2, 1]  # Серый по умолчанию
+
     def _update_bg(self, *args):
-        """Обновляет позицию и размер фона при изменении карточки"""
         self.bg.pos = self.pos
         self.bg.size = self.size
 
     def on_press(self):
-        """Вызывается при нажатии на карточку"""
         self._open_callback(self._cert_index)
 
+class EmptyStateWidget(BoxLayout):
+    """Виджет для показа когда нет данных"""
+    def __init__(self, **kwargs):
+        super().__init__(orientation='vertical', spacing=20, **kwargs)
+        
+        # Иконка (используем текст как иконку)
+        icon = Label(
+            text="📱",
+            font_size=80,
+            size_hint_y=None,
+            height=120
+        )
+        self.add_widget(icon)
+        
+        # Основной текст
+        main_text = Label(
+            text="Поднесите карту к телефону",
+            font_size=24,
+            bold=True,
+            color=[0.3, 0.3, 0.3, 1],
+            size_hint_y=None,
+            height=40
+        )
+        self.add_widget(main_text)
+        
+        # Инструкция
+        instruction = Label(
+            text="Для считывания данных сотрудника\nподнесите NFC карту к задней\nпанели телефона",
+            font_size=16,
+            color=[0.5, 0.5, 0.5, 1],
+            halign='center',
+            size_hint_y=None,
+            height=80
+        )
+        self.add_widget(instruction)
+
 class MainScreen(Screen):
-    """
-    Главный экран приложения
-    Показывает список всех сертификатов работника
-    """
+    """Главный экран приложения"""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.data = None  # Здесь будут храниться данные работника
+        self.data = None
         
         # Основной контейнер
-        layout = BoxLayout(
+        self.main_layout = BoxLayout(
             orientation='vertical', 
             spacing=18, 
             padding=[30, 20, 30, 20]
@@ -159,62 +165,111 @@ class MainScreen(Screen):
             text='БірКарта', 
             font_size=28, 
             bold=True, 
-            color=[0, 0, 0, 1]
+            color=[0, 0, 0, 1],
+            halign='left'
         ))
-        header.add_widget(Widget(size_hint_x=None, width=40))  # Пустое место справа
-        layout.add_widget(header)
+        
+        # Статус NFC
+        self.nfc_status = Label(
+            text='NFC готов',
+            font_size=14,
+            color=[0, 0.7, 0, 1],
+            halign='right',
+            size_hint_x=None,
+            width=100
+        )
+        header.add_widget(self.nfc_status)
+        self.main_layout.add_widget(header)
 
-        # Имя работника (или инструкция)
-        self.name_label = Label(
-            text='Поднесите карту к телефону',
+        # Контейнер для контента (будет меняться)
+        self.content_container = BoxLayout(orientation='vertical')
+        self.main_layout.add_widget(self.content_container)
+        
+        self.add_widget(self.main_layout)
+        
+        # Показываем пустое состояние по умолчанию
+        self.show_empty_state()
+
+    def show_empty_state(self):
+        """Показывает экран ожидания карты"""
+        self.content_container.clear_widgets()
+        empty_widget = EmptyStateWidget()
+        self.content_container.add_widget(empty_widget)
+
+    def show_employee_data(self):
+        """Показывает данные сотрудника"""
+        if not self.data:
+            self.show_empty_state()
+            return
+            
+        self.content_container.clear_widgets()
+        
+        # Имя сотрудника
+        name_label = Label(
+            text=self.data.get('fio', 'Сотрудник'),
             font_size=20,
             bold=True,
             color=[0, 0, 0, 1],
             size_hint_y=None,
-            height=36
+            height=40
         )
-        layout.add_widget(self.name_label)
-
+        self.content_container.add_widget(name_label)
+        
+        # Количество сертификатов
+        cert_count = len(self.data.get('certs', []))
+        count_label = Label(
+            text=f"Сертификатов: {cert_count}",
+            font_size=16,
+            color=[0.5, 0.5, 0.5, 1],
+            size_hint_y=None,
+            height=30
+        )
+        self.content_container.add_widget(count_label)
+        
         # Прокручиваемый список сертификатов
-        self.scroll = ScrollView()
-        self.rows = BoxLayout(
+        scroll = ScrollView()
+        rows = BoxLayout(
             orientation='vertical', 
             spacing=18, 
             size_hint_y=None, 
             padding=[0, 10, 0, 10]
         )
-        self.rows.bind(minimum_height=self.rows.setter('height'))
-        self.scroll.add_widget(self.rows)
-        layout.add_widget(self.scroll)
-
-        self.add_widget(layout)
-
-    def set_data(self, data):
-        """
-        Устанавливает данные работника и обновляет интерфейс
-        data - словарь с информацией о работнике и его сертификатах
-        """
-        self.data = data
-        self.refresh_ui()
-
-    def refresh_ui(self):
-        """Обновляет интерфейс после получения новых данных"""
-        # Очищаем старый список
-        self.rows.clear_widgets()
-        
-        if not self.data:
-            self.name_label.text = 'Поднесите карту к телефону'
-            return
-        
-        # Показываем имя работника
-        worker_name = self.data.get('fio', 'Сотрудник')
-        self.name_label.text = worker_name
+        rows.bind(minimum_height=rows.setter('height'))
         
         # Добавляем карточки сертификатов
         certificates = self.data.get('certs', [])
         for idx, cert in enumerate(certificates):
             card = CardButton(cert, idx, self.open_detail)
-            self.rows.add_widget(card)
+            rows.add_widget(card)
+        
+        scroll.add_widget(rows)
+        self.content_container.add_widget(scroll)
+        
+        # Кнопка для очистки (для тестирования)
+        clear_button = Button(
+            text="Очистить данные",
+            size_hint_y=None,
+            height=40,
+            background_color=[0.8, 0.8, 0.8, 1]
+        )
+        clear_button.bind(on_press=self.clear_data)
+        self.content_container.add_widget(clear_button)
+
+    def set_data(self, data):
+        """Устанавливает данные сотрудника"""
+        self.data = data
+        if data:
+            self.show_employee_data()
+            self.nfc_status.text = 'Данные загружены'
+            self.nfc_status.color = [0, 0.7, 0, 1]
+        else:
+            self.show_empty_state()
+            self.nfc_status.text = 'NFC готов'
+            self.nfc_status.color = [0, 0.7, 0, 1]
+
+    def clear_data(self, *args):
+        """Очищает данные (для тестирования)"""
+        self.set_data(None)
 
     def open_detail(self, cert_index):
         """Открывает детальную информацию о сертификате"""
@@ -223,14 +278,11 @@ class MainScreen(Screen):
             
         certificates = self.data.get('certs', [])
         if 0 <= cert_index < len(certificates):
-            # Получаем ссылку на приложение и показываем детали
             app = App.get_running_app()
             app.show_detail(certificates[cert_index])
 
 class DetailScreen(Screen):
-    """
-    Экран с детальной информацией о сертификате
-    """
+    """Экран с детальной информацией о сертификате"""
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         
@@ -292,9 +344,18 @@ class DetailScreen(Screen):
         cert_name = cert.get('name', 'Без названия')
         self.title_label.text = cert_name
         
-        # Дата действия
+        # Дата действия с проверкой срока
         valid_date = cert.get('date', 'Не указано')
-        self.date_label.text = f"Действует до: {valid_date}"
+        date_status = self._get_date_status(valid_date)
+        self.date_label.text = f"Действует до: {valid_date} {date_status}"
+        
+        # Цвет даты в зависимости от статуса
+        if "ПРОСРОЧЕН" in date_status:
+            self.date_label.color = [1, 0, 0, 1]  # Красный
+        elif "скоро истекает" in date_status:
+            self.date_label.color = [1, 0.5, 0, 1]  # Оранжевый
+        else:
+            self.date_label.color = [0, 0.7, 0, 1]  # Зеленый
         
         # Очищаем старые детали
         self.details_box.clear_widgets()
@@ -314,14 +375,29 @@ class DetailScreen(Screen):
             detail_label.bind(texture_size=lambda inst, val: setattr(detail_label, 'height', val[1]))
             self.details_box.add_widget(detail_label)
 
+    def _get_date_status(self, date_str):
+        """Определяет статус сертификата по дате"""
+        try:
+            from datetime import datetime
+            cert_date = datetime.strptime(date_str, "%d.%m.%Y")
+            today = datetime.now()
+            days_left = (cert_date - today).days
+            
+            if days_left < 0:
+                return "- ПРОСРОЧЕН!"
+            elif days_left < 30:
+                return f"- скоро истекает ({days_left} дн.)"
+            else:
+                return "- действителен"
+        except:
+            return ""
+
     def go_back(self, *args):
         """Возвращается на главный экран"""
         self.manager.current = 'main'
 
 class BirKartaApp(App):
-    """
-    Главный класс приложения
-    """
+    """Главный класс приложения"""
     def build(self):
         # Создаем менеджер экранов
         self.sm = ScreenManager()
@@ -340,12 +416,19 @@ class BirKartaApp(App):
                 request_permissions([Permission.NFC])
                 activity.bind(on_new_intent=self.on_new_intent)
                 print("NFC настроен успешно")
+                
+                # Обновляем статус NFC
+                self.main_screen.nfc_status.text = 'NFC активен'
+                self.main_screen.nfc_status.color = [0, 0.7, 0, 1]
+                
             except Exception as e:
                 print(f"Ошибка настройки NFC: {e}")
-        
-        # Загружаем демо данные для тестирования
-        # В реальном приложении эта строка не нужна
-        Clock.schedule_once(lambda dt: self.main_screen.set_data(DEMO_DATA), 1)
+                self.main_screen.nfc_status.text = 'NFC ошибка'
+                self.main_screen.nfc_status.color = [1, 0, 0, 1]
+        else:
+            # На компьютере показываем что NFC недоступен
+            self.main_screen.nfc_status.text = 'Только Android'
+            self.main_screen.nfc_status.color = [0.5, 0.5, 0.5, 1]
         
         return self.sm
 
@@ -363,6 +446,12 @@ class BirKartaApp(App):
             return
         
         try:
+            print("NFC событие обнаружено!")
+            
+            # Обновляем статус
+            self.main_screen.nfc_status.text = 'Считывание...'
+            self.main_screen.nfc_status.color = [1, 0.5, 0, 1]  # Оранжевый
+            
             # Импортируем Android классы
             Intent = autoclass('android.content.Intent')
             NfcAdapter = autoclass('android.nfc.NfcAdapter')
@@ -377,39 +466,48 @@ class BirKartaApp(App):
             
             if action not in valid_actions:
                 print(f"Неподдерживаемое NFC действие: {action}")
+                self.main_screen.nfc_status.text = 'Неверная карта'
+                self.main_screen.nfc_status.color = [1, 0, 0, 1]
                 return
 
             # Получаем NDEF сообщения
             raw_msgs = intent.getParcelableArrayExtra(NfcAdapter.EXTRA_NDEF_MESSAGES)
             if raw_msgs is None:
                 print("Нет NDEF сообщений")
+                self.main_screen.nfc_status.text = 'Пустая карта'
+                self.main_screen.nfc_status.color = [1, 0, 0, 1]
                 return
 
             # Конвертируем в NdefMessage объекты
             messages = [cast('android.nfc.NdefMessage', msg) for msg in raw_msgs]
             if not messages:
                 print("Пустые сообщения")
+                self.main_screen.nfc_status.text = 'Нет данных'
+                self.main_screen.nfc_status.color = [1, 0, 0, 1]
                 return
 
             # Берем первую запись первого сообщения
             records = messages[0].getRecords()
             if not records or records.length == 0:
                 print("Нет записей в сообщении")
+                self.main_screen.nfc_status.text = 'Нет записей'
+                self.main_screen.nfc_status.color = [1, 0, 0, 1]
                 return
 
             first_record = records[0]
             payload = first_record.getPayload()
             if payload is None:
                 print("Пустой payload")
+                self.main_screen.nfc_status.text = 'Пустые данные'
+                self.main_screen.nfc_status.color = [1, 0, 0, 1]
                 return
 
             # Декодируем NDEF Text Record
-            # Формат: [status][язык][текст]
             status_byte = payload[0] & 0xFF
             language_length = status_byte & 0x3F
             is_utf16 = (status_byte & 0x80) != 0
             
-            # Извлекаем текст (пропускаем статус и язык)
+            # Извлекаем текст
             text_bytes = payload[1 + language_length:]
             
             # Декодируем текст
@@ -417,30 +515,52 @@ class BirKartaApp(App):
             try:
                 text_data = bytes(text_bytes).decode(encoding)
             except UnicodeDecodeError:
-                # Пробуем UTF-8 как запасной вариант
                 text_data = bytes(text_bytes).decode('utf-8', errors='ignore')
 
-            print(f"Считан текст с NFC: {text_data[:100]}...")  # Показываем первые 100 символов
+            print(f"Считан текст с NFC: {text_data[:100]}...")
 
             # Парсим JSON
             try:
                 worker_data = json.loads(text_data)
                 print("JSON успешно распарсен")
                 
+                # Проверяем структуру данных
+                if not isinstance(worker_data, dict):
+                    raise ValueError("Неверная структура данных")
+                
+                if 'fio' not in worker_data:
+                    raise ValueError("Отсутствует ФИО")
+                
+                if 'certs' not in worker_data:
+                    raise ValueError("Отсутствуют сертификаты")
+                
                 # Обновляем данные в приложении
                 self.main_screen.set_data(worker_data)
                 self.sm.current = 'main'
+                
+                # Обновляем статус
+                self.main_screen.nfc_status.text = 'Данные загружены'
+                self.main_screen.nfc_status.color = [0, 0.7, 0, 1]
                 
                 print(f"Загружены данные для: {worker_data.get('fio', 'Неизвестно')}")
                 
             except json.JSONDecodeError as e:
                 print(f"Ошибка парсинга JSON: {e}")
                 print(f"Полученный текст: {text_data}")
+                self.main_screen.nfc_status.text = 'Неверный формат'
+                self.main_screen.nfc_status.color = [1, 0, 0, 1]
+                
+            except ValueError as e:
+                print(f"Ошибка данных: {e}")
+                self.main_screen.nfc_status.text = str(e)
+                self.main_screen.nfc_status.color = [1, 0, 0, 1]
 
         except Exception as e:
             print(f"Ошибка обработки NFC: {e}")
             import traceback
             traceback.print_exc()
+            self.main_screen.nfc_status.text = 'Ошибка NFC'
+            self.main_screen.nfc_status.color = [1, 0, 0, 1]
 
 if __name__ == '__main__':
     BirKartaApp().run()
