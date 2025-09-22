@@ -13,7 +13,7 @@ jobs:
       - name: Build with Docker
         run: |
           docker run --rm -v ${{ github.workspace }}:/home/user/app \
-            kivy/buildozer \
+            kivy/buildozer-ci \
             buildozer -v android debug
 
       - name: Upload APK
