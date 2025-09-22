@@ -1,32 +1,26 @@
-name: Android APK (Buildozer)
+name: Build Android APK
 
 on:
-  workflow_dispatch:  # запуск руками
+  workflow_dispatch:  # запуск вручную
   push:
-    branches: [ main ]  # или твоя ветка
+    branches: [ main ]  # или твоя рабочая ветка
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [arm64-v8a]   # можно добавить armeabi-v7a при желании
-    env:
-      APP_ANDROID_ARCH: ${{ matrix.arch }}  # передаём архитектуру билдозеру
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build with Buildozer
-        id: buildozer
-        uses: ArtemSBulgakov/buildozer-action@v1.2.0
+      - name: Build APK with Buildozer
+        uses: kivy/buildozer-action@v1
         with:
           workdir: .
           buildozer_version: stable
           command: buildozer -v android debug
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: birkarta-${{ matrix.arch }}
-          path: ${{ steps.buildozer.outputs.filename }}
+          name: BirKarta-APK
+          path: bin/*.apk
