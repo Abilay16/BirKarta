@@ -3,14 +3,11 @@ title = BirKarta
 package.name = birkarta
 package.domain = kz.bolashak
 source.dir = .
-version = 1.0
-requirements = python3,kivy==2.0.0,pyjnius
+source.include_exts = py,kv,png,jpg,ttf,json
+requirements = python3,kivy,pyjnius
 
-[buildozer]
-log_level = 2
-
-[android]
-api = 30
-minapi = 21
-accept_sdk_license = True
-permissions = NFC
+android.permissions = NFC
+android.features = android.hardware.nfc
+android.api = 33
+android.minapi = 24
+android.enable_androidx = True
