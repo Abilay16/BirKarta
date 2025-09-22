@@ -10,11 +10,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Build with Buildozer
-        uses: kivymd/buildozer-action@master
-        with:
-          buildozer_version: stable
-          command: android debug
+      - name: Build APK inside Docker
+        run: |
+          docker run --rm -v ${{ github.workspace }}:/home/user/app \
+            -e BUILDOZER_ALLOW_ROOT=1 \
+            -e PIP_NO_USER=1 \
+            ghcr.io/kivy/buildozer:latest \
+            buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v3
