@@ -12,8 +12,8 @@ jobs:
 
       - name: Build APK with Docker
         run: |
-          docker run --rm -v ${{ github.workspace }}:/app \
-            kivy/buildozer \
+          docker run --rm -v ${{ github.workspace }}:/home/user/app \
+            kivy/buildozer:stable \
             buildozer -v android debug
 
       - name: Upload APK
